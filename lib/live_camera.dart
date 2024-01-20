@@ -97,14 +97,15 @@ class _LiveCameraState extends State<LiveCamera> {
     final responseString = await response.stream.bytesToString();
     final decodedMap = jsonDecode(responseString);
     print("Response Json: ${decodedMap['prediction']}");
-
-    if (decodedMap['prediction'] != "" &&
-        prediction != decodedMap['prediction']) {
-      await sendMail(decodedMap['prediction']);
-    }
     setState(() {
       prediction = decodedMap['prediction'];
     });
+    if (decodedMap['prediction'] != "" &&
+        prediction != decodedMap['prediction'] &&
+        decodedMap['prediction'] != "forest") {
+      await sendMail(decodedMap['prediction']);
+    }
+
     // print("Response Json: ${decodedMap.toString()}");
     // print("Response: ${response.persistentConnection.toString()}");
     // print("Response: ${response.statusCode.toString()}");
@@ -140,6 +141,8 @@ class _LiveCameraState extends State<LiveCamera> {
 
   Future<XFile?> takePicture() async {
     CameraController? controller = cameraController;
+    // off flash
+    controller.setFlashMode(FlashMode.off);
     if (cameraController == null || !cameraController.value.isInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error: select a camera first.')),
