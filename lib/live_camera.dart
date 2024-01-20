@@ -6,6 +6,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 
 class LiveCamera extends StatefulWidget {
   const LiveCamera({super.key, required this.cameras});
@@ -20,6 +21,7 @@ class _LiveCameraState extends State<LiveCamera> {
   CameraImage? img;
   XFile? imageFile;
   Timer? timer;
+  DateTime timeTaken = DateTime.now();
 
   Future<void> timerFunction() async {
     timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
@@ -38,6 +40,8 @@ class _LiveCameraState extends State<LiveCamera> {
 
   @override
   void initState() {
+    print("Time: $timeTaken");
+
     Timer.periodic(const Duration(seconds: 1), (Timer t) => timerFunction());
 
     super.initState();
@@ -74,6 +78,10 @@ class _LiveCameraState extends State<LiveCamera> {
   }
 
   String prediction = "";
+  String latitude = "";
+  String longitude = "";
+  String time = "";
+  bool isInitalBuild = true;
 
   Future<void> sendImage(String imagePath) async {
     // final directory = await getApplicationDocumentsDirectory();
@@ -131,6 +139,9 @@ class _LiveCameraState extends State<LiveCamera> {
               },
               body: jsonEncode(<String, String>{
                 "alert": "Alert! \n $mailText was detected.",
+                "latitude": latitude,
+                "longitude": longitude,
+                "time": timeTaken.toString(),
               }));
       print("Roshan Response: ${response.statusCode.toString()}");
       print("Roshan Response: ${response.body.toString()}");
@@ -174,8 +185,28 @@ class _LiveCameraState extends State<LiveCamera> {
     );
   }
 
+  Future<void> getCurrentLocation() async {
+    LocationPermission locationPermission;
+    locationPermission = await Geolocator.checkPermission();
+    if (locationPermission == LocationPermission.denied) {
+      locationPermission = await Geolocator.requestPermission();
+    }
+
+    Position position = await Geolocator.getCurrentPosition();
+    setState(() {
+      latitude = position.latitude.toString();
+      longitude = position.longitude.toString();
+    });
+    print("Latitude: $latitude");
+    print("Longitude: $longitude");
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isInitalBuild) {
+      getCurrentLocation();
+      isInitalBuild = false;
+    }
     return Scaffold(
       body: SafeArea(
         child: Scaffold(
@@ -185,10 +216,63 @@ class _LiveCameraState extends State<LiveCamera> {
                 Stack(
                   children: [
                     SizedBox(
-                      height: MediaQuery.of(context).size.height / 1.2,
+                      height: MediaQuery.of(context).size.height / 1.25,
                       width: MediaQuery.of(context).size.width,
                       child: CameraPreview(cameraController),
                     ),
+                    if (prediction == "")
+                      Positioned(
+                          top: 3,
+                          right: 3,
+                          child: Container(
+                            width: MediaQuery.of(context).size.width / 2,
+                            height: MediaQuery.of(context).size.height / 6,
+                            color: Colors.black,
+                            child: FittedBox(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Prediction: $prediction",
+                                      style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white),
+                                    ),
+                                    Text(
+                                      "Time Detected: $timeTaken",
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    // Latituude and Longitude
+                                    Text(
+                                      "Latitude: $latitude",
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Longitude: $longitude",
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ))
                     // Center(
                     //   child: cameraController.value.isInitialized
                     //       ? AspectRatio(
@@ -220,7 +304,7 @@ class _LiveCameraState extends State<LiveCamera> {
                 //           fit: BoxFit.cover,
                 //         ),
                 // ),
-                if (prediction != "") Text("$prediction Detected.")
+                // if (prediction != "")
               ],
             ),
           ),
