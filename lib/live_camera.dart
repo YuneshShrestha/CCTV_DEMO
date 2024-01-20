@@ -73,6 +73,8 @@ class _LiveCameraState extends State<LiveCamera> {
     });
   }
 
+  String prediction = "";
+
   Future<void> sendImage(String imagePath) async {
     // final directory = await getApplicationDocumentsDirectory();
     // final imagePath =
@@ -83,7 +85,7 @@ class _LiveCameraState extends State<LiveCamera> {
     final request = http.MultipartRequest(
         'POST',
         Uri.parse(
-            'http://192.168.18.37:5000/predict')); // Replace with your API endpoint
+            'http://192.168.18.28:5002/predict')); // Replace with your API endpoint
     request.files.add(
       await http.MultipartFile.fromPath(
         'image',
@@ -94,14 +96,23 @@ class _LiveCameraState extends State<LiveCamera> {
     final response = await request.send();
     final responseString = await response.stream.bytesToString();
     final decodedMap = jsonDecode(responseString);
-    print("Response Json: ${decodedMap.toString()}");
-    print("Response: ${response.persistentConnection.toString()}");
-    print("Response: ${response.statusCode.toString()}");
-    print("Response: ${response.contentLength.toString()}");
-    print("Response: ${response.reasonPhrase.toString()}");
-    print("Response: ${response.request.toString()}");
-    print("Response: ${response.stream.toString()}");
-    print("Response: ${response.toString()}");
+    print("Response Json: ${decodedMap['prediction']}");
+
+    if (decodedMap['prediction'] != "" &&
+        prediction != decodedMap['prediction']) {
+      await sendMail(decodedMap['prediction']);
+    }
+    setState(() {
+      prediction = decodedMap['prediction'];
+    });
+    // print("Response Json: ${decodedMap.toString()}");
+    // print("Response: ${response.persistentConnection.toString()}");
+    // print("Response: ${response.statusCode.toString()}");
+    // print("Response: ${response.contentLength.toString()}");
+    // print("Response: ${response.reasonPhrase.toString()}");
+    // print("Response: ${response.request.toString()}");
+    // print("Response: ${response.stream.toString()}");
+    // print("Response: ${response.toString()}");
 
     if (response.statusCode == 200) {
       print('Image uploaded successfully');
@@ -110,12 +121,21 @@ class _LiveCameraState extends State<LiveCamera> {
     }
   }
 
-  Future<void> sendMail() async {
-    final response = await http.post(
-        Uri.parse('http://192.168.18.17:3000/api/alert'),
-        body: {'alert': 'Hello from Flutter'});
-    print("Roshan Response: ${response.statusCode.toString()}");
-    print("Roshan Response: ${response.body.toString()}");
+  Future<void> sendMail(String mailText) async {
+    try {
+      final response =
+          await http.post(Uri.parse('http://192.168.18.17:3000/api/alert'),
+              headers: <String, String>{
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode(<String, String>{
+                "alert": "Alert! \n $mailText was detected.",
+              }));
+      print("Roshan Response: ${response.statusCode.toString()}");
+      print("Roshan Response: ${response.body.toString()}");
+    } catch (e) {
+      print("Roshan Error: ${e.toString()}");
+    }
   }
 
   Future<XFile?> takePicture() async {
@@ -154,9 +174,6 @@ class _LiveCameraState extends State<LiveCamera> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Camera'),
-      ),
       body: SafeArea(
         child: Scaffold(
           body: SingleChildScrollView(
@@ -165,7 +182,7 @@ class _LiveCameraState extends State<LiveCamera> {
                 Stack(
                   children: [
                     SizedBox(
-                      height: MediaQuery.of(context).size.height / 2,
+                      height: MediaQuery.of(context).size.height / 1.2,
                       width: MediaQuery.of(context).size.width,
                       child: CameraPreview(cameraController),
                     ),
@@ -190,16 +207,17 @@ class _LiveCameraState extends State<LiveCamera> {
                   ],
                 ),
                 //  Display Image
-                Container(
-                  height: MediaQuery.of(context).size.height / 2,
-                  width: MediaQuery.of(context).size.width,
-                  child: imageFile == null
-                      ? const Text('No Image')
-                      : Image.file(
-                          File(imageFile!.path),
-                          fit: BoxFit.cover,
-                        ),
-                ),
+                // Container(
+                //   height: MediaQuery.of(context).size.height / 2,
+                //   width: MediaQuery.of(context).size.width,
+                //   child: imageFile == null
+                //       ? const Text('No Image')
+                //       : Image.file(
+                //           File(imageFile!.path),
+                //           fit: BoxFit.cover,
+                //         ),
+                // ),
+                if (prediction != "") Text("$prediction Detected.")
               ],
             ),
           ),
