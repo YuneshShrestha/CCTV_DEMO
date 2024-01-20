@@ -105,14 +105,15 @@ class _LiveCameraState extends State<LiveCamera> {
     final responseString = await response.stream.bytesToString();
     final decodedMap = jsonDecode(responseString);
     print("Response Json: ${decodedMap['prediction']}");
-    setState(() {
-      prediction = decodedMap['prediction'];
-    });
+
     if (decodedMap['prediction'] != "" &&
         prediction != decodedMap['prediction'] &&
         decodedMap['prediction'] != "forest") {
       await sendMail(decodedMap['prediction']);
     }
+    setState(() {
+      prediction = decodedMap['prediction'];
+    });
 
     // print("Response Json: ${decodedMap.toString()}");
     // print("Response: ${response.persistentConnection.toString()}");
@@ -133,7 +134,7 @@ class _LiveCameraState extends State<LiveCamera> {
   Future<void> sendMail(String mailText) async {
     try {
       final response =
-          await http.post(Uri.parse('http://192.168.18.17:3000/api/alert'),
+          await http.post(Uri.parse('http://192.168.18.22:3000/api/alert'),
               headers: <String, String>{
                 'Content-Type': 'application/json',
               },
@@ -220,7 +221,7 @@ class _LiveCameraState extends State<LiveCamera> {
                       width: MediaQuery.of(context).size.width,
                       child: CameraPreview(cameraController),
                     ),
-                    if (prediction == "")
+                    if (prediction != "")
                       Positioned(
                           top: 3,
                           right: 3,
